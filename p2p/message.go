@@ -1,8 +1,11 @@
 package p2p
 
-// message represents any arbitary data 
+import "net"
+
+// message represents any arbitary data
 // that is being sent over the each trasport
-// between two nodes in the network 
+// between two nodes in the network
 type Message struct{
+	From net.Addr
 	Payload [] byte 
 }
