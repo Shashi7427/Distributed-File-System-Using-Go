@@ -3,6 +3,7 @@ package p2p
 import (
 	"fmt"
 	"net"
+	"reflect"
 	"sync"
 )
 
@@ -32,6 +33,7 @@ type TCPTransportOpts struct {
 	ListenAddress string
 	ShakeHands    HandshakeFunc
 	Decoder       Decoder
+	OnPeer        func(Peer) error
 }
 
 type TCPTransport struct {
@@ -83,15 +85,24 @@ func (t *TCPTransport) startAcceptLoop() {
 }
 
 func (t *TCPTransport) handleConnection(conn net.Conn) {
+	var err error
+	defer func() {
+		fmt.Printf("Dropping peer connection %s\n", err)
+		conn.Close()
+	}()
+
 	peer := NewTCPPeer(conn, true)
 	fmt.Printf("new incoming connection %v\n", peer)
 
 	if err := t.ShakeHands(peer); err != nil {
-		conn.Close()
-		fmt.Printf("TCP handshake erorr %s\n", err)
+		fmt.Printf("error in handshake %s\n", err)
 		return
 	}
 
+	if err := t.OnPeer(peer); err != nil {
+		fmt.Printf("error in peer %s\n", err)
+		return
+	}
 	// Read loop
 	rcp := RCP{}
 	// buf := make([]byte, 2000)
@@ -102,9 +113,12 @@ func (t *TCPTransport) handleConnection(conn net.Conn) {
 		// 	fmt.Printf("TCP error : %s\n", err)
 		// 	continue
 		// }
+
+		// panic((err))
 		if err := t.Decoder.Decode(conn, &rcp); err != nil {
+			fmt.Print(reflect.TypeOf(err))
 			fmt.Printf("TCP error : %s/n", err)
-			continue
+			return
 		}
 		rcp.From = conn.RemoteAddr()
 		t.rcpch <- rcp

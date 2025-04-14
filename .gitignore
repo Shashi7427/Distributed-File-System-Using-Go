@@ -1,2 +1,4 @@
 bin/
 bin/fs
+go.mod
+go.sum

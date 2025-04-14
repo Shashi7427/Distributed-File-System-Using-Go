@@ -11,6 +11,10 @@ func main() {
 		ListenAddress: ":3000",
 		ShakeHands:    p2p.NOPHandshakeFunc,
 		Decoder:       p2p.DefaultDecoder{},
+		OnPeer: func(peer p2p.Peer) error {
+			fmt.Printf("peer %v connected\n", peer)
+			return nil
+		},
 		// this Decoder is an interface and it should be implemented in p2p.GOBDecoder
 
 	}
