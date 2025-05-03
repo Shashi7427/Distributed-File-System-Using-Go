@@ -22,14 +22,15 @@ func TestStoreDeleteKey(t *testing.T) {
 	if err := s.Delete(k); err != nil {
 		t.Error(err)
 	}
+
+	if s.Has(k) {
+		t.Errorf("expected %s to be deleted", k)
+	}
 }
 
 func TestStore(t *testing.T) {
-	opts := StoreOpts{
-		PathTransformFunc: CASPathTransformFunc,
-	}
+	s := newStore()
 	k := "niyati"
-	s := NewStore(opts)
 	data := []byte("some jpg bytes")
 	if err := s.writeStream(k, bytes.NewReader(data)); err != nil {
 		t.Error(err)
@@ -43,5 +44,19 @@ func TestStore(t *testing.T) {
 	buf, _ := io.ReadAll(r)
 	if string(buf) != string(data) {
 		t.Errorf("expected %s, got %s", data, buf)
+	}
+}
+
+func newStore() *Store {
+	opts := StoreOpts{
+		PathTransformFunc: CASPathTransformFunc,
+	}
+	return NewStore(opts)
+}
+
+func tearDown(t *testing.T, s *Store) {
+	// Clean up the test directory
+	if err := s.Clear(); err != nil {
+		t.Error(err)
 	}
 }

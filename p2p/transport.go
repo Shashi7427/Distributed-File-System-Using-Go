@@ -1,8 +1,13 @@
 package p2p
 
+import "net"
+
 // intergace representing an remove node
 type Peer interface {
-	Close() error
+	net.Conn // we can use net.Conn directly
+	Send([]byte) error
+	// RemoteAddr() net.Addr // not needed if we use net.Conn
+	// Close() error // not need if we use net.Conn
 }
 
 // transport is anything that handles
@@ -11,4 +16,6 @@ type Peer interface {
 type Transport interface {
 	ListenAndAccept() error
 	Consume() <-chan RCP
+	Close() error
+	Dial(string) error
 }

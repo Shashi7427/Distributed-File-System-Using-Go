@@ -88,6 +88,14 @@ func (s *Store) Has(key string) bool {
 
 }
 
+func (s *Store) Write(key string, r io.Reader) error {
+	return s.writeStream(key, r)
+}
+
+func (s *Store) Clear() error {
+	return os.RemoveAll(s.RootPath)
+}
+
 func (s *Store) Delete(key string) error {
 	pathName := s.PathTransformFunc(key)
 
