@@ -9,7 +9,7 @@ import (
 
 func TestCASPathTransformFunc(t *testing.T) {
 	key := "niyati"
-	pathname := CASPathTransformFunc(key)
+	pathname := CASPathTransformFunc(key, DefaultRootPath)
 	fmt.Println(pathname)
 }
 
@@ -32,7 +32,7 @@ func TestStore(t *testing.T) {
 	s := newStore()
 	k := "niyati"
 	data := []byte("some jpg bytes")
-	if err := s.writeStream(k, bytes.NewReader(data)); err != nil {
+	if _, err := s.writeStream(k, bytes.NewReader(data)); err != nil {
 		t.Error(err)
 	}
 

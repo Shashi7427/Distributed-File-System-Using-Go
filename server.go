@@ -53,7 +53,8 @@ type Message struct {
 }
 
 type MessageStoreFile struct {
-	Key string
+	Key  string
+	Size int64
 }
 
 func (fs *FileServer) loop() {
@@ -67,7 +68,7 @@ func (fs *FileServer) loop() {
 		select {
 		case rcp := <-fs.Transport.Consume():
 			var msg Message
-			fmt.Println("msg received")
+			fmt.Printf("msg received by server %s\n", fs.store.RootPath)
 			// fmt.Println(msg)
 			if err := gob.NewDecoder(bytes.NewReader(rcp.Payload)).Decode(&msg); err != nil {
 				log.Fatal(err)
@@ -128,12 +129,13 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 	if !ok {
 		return fmt.Errorf("peer (%s) not found", from)
 	}
-	fmt.Printf("peer found %s\n", peer.RemoteAddr())
-	if err := s.store.Write(msg.Key, peer); err != nil {
+	fmt.Printf("peer found %s msg of size %d\n", peer.RemoteAddr(), msg.Size)
+	n, err := s.store.Write(msg.Key, io.LimitReader(peer, msg.Size))
+	if err != nil {
 		return err
 	}
 	// this is not a good practice but we are doing it for now
-	fmt.Printf("received private data and stored : %v\n", msg)
+	fmt.Printf("received private data and stored of size : %v\n", n)
 	peer.(*p2p.TCPPeer).Wg.Done()
 	return nil
 }
@@ -171,32 +173,47 @@ func (s *FileServer) broadcast(msg *Message) error {
 
 func (s *FileServer) StoreData(key string, r io.Reader) error {
 
+	// storing the data to disk
 	buf := new(bytes.Buffer)
-	msg := &Message{
-		Payload: MessageStoreFile{
-			Key: key,
-		},
-	}
+	tee := io.TeeReader(r, buf)
 
-	if err := gob.NewEncoder(buf).Encode(msg); err != nil {
-		log.Fatal(err)
+	size, err := s.store.Write(key, tee)
+	if err != nil {
 		return err
 	}
 
+	// sending the data to all the peers in the network
+	msgbuf := new(bytes.Buffer)
+	msg := &Message{
+		Payload: MessageStoreFile{
+			Key:  key,
+			Size: size,
+		},
+	}
+
+	if err := gob.NewEncoder(msgbuf).Encode(msg); err != nil {
+		log.Fatal(err)
+		return err
+	}
+	// first informing that we are going to send the data
 	for _, peer := range s.peers {
-		if err := peer.Send(buf.Bytes()); err != nil {
+		if err := peer.Send(msgbuf.Bytes()); err != nil {
 			log.Println("error sending message to peer: ", err)
 		}
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 3)
 	// sending th large data now :
 	fmt.Println("sending the large data now")
-	payload := []byte("some large data")
 	for _, peer := range s.peers {
-		if err := peer.Send(payload); err != nil {
-			log.Println("error sending message to peer: ", err)
+		// if err := peer.Send(payload); err != nil {
+		// 	log.Println("error sending message to peer: ", err)
+		// }
+		n, err := io.Copy(peer, buf)
+		if err != nil {
+			return err
 		}
+		fmt.Println("received and written bytes to disk", n)
 	}
 	return nil
 

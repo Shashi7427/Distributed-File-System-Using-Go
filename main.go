@@ -21,7 +21,7 @@ func makeServer(listenAddr string, nodes ...string) *FileServer {
 	}
 	transport := p2p.NewTCPTransport(tcpOpts)
 	FileServerOpts := FileServerOpts{
-		StorageRoot:       "3000_storage",
+		StorageRoot:       listenAddr,
 		PathTransformFunc: CASPathTransformFunc,
 		Transport:         transport,
 		BootStrapNodes:    nodes,

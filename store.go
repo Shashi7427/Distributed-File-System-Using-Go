@@ -13,7 +13,7 @@ import (
 
 var DefaultRootPath = "shashiFiles"
 
-type PathTransformFunc func(string) PathKey
+type PathTransformFunc func(string, string) PathKey
 
 type StoreOpts struct {
 	PathTransformFunc PathTransformFunc
@@ -37,7 +37,7 @@ func (p *PathKey) FullPath() string {
 	return fmt.Sprintf("%s/%s", p.PathName, p.FileName)
 }
 
-func CASPathTransformFunc(key string) PathKey {
+func CASPathTransformFunc(key string, root string) PathKey {
 	hash := sha1.Sum([]byte(key))
 	hashStr := hex.EncodeToString(hash[:])
 
@@ -51,14 +51,14 @@ func CASPathTransformFunc(key string) PathKey {
 	}
 
 	return PathKey{
-		PathName: DefaultRootPath + "/" + strings.Join(path, "/"),
+		PathName: root + "/" + strings.Join(path, "/"),
 		FileName: hashStr,
 	}
 }
 
-var DefaultPathTransformFunc = func(key string) PathKey {
+var DefaultPathTransformFunc = func(key string, root string) PathKey {
 	return PathKey{
-		PathName: DefaultRootPath + "/" + key,
+		PathName: root + "/" + key,
 		FileName: key,
 	}
 }
@@ -70,6 +70,8 @@ type Store struct {
 func NewStore(opts StoreOpts) *Store {
 	if len(opts.RootPath) == 0 {
 		opts.RootPath = DefaultRootPath
+	} else {
+		DefaultRootPath = opts.RootPath
 	}
 	if opts.PathTransformFunc == nil {
 		opts.PathTransformFunc = DefaultPathTransformFunc
@@ -82,13 +84,13 @@ func NewStore(opts StoreOpts) *Store {
 // Store is a simple file store that uses the file system to store files
 
 func (s *Store) Has(key string) bool {
-	pathName := s.PathTransformFunc(key)
+	pathName := s.PathTransformFunc(key, s.RootPath)
 	_, err := os.Stat(pathName.FullPath())
 	return !os.IsNotExist(err)
 
 }
 
-func (s *Store) Write(key string, r io.Reader) error {
+func (s *Store) Write(key string, r io.Reader) (int64, error) {
 	return s.writeStream(key, r)
 }
 
@@ -97,7 +99,7 @@ func (s *Store) Clear() error {
 }
 
 func (s *Store) Delete(key string) error {
-	pathName := s.PathTransformFunc(key)
+	pathName := s.PathTransformFunc(key, s.RootPath)
 
 	defer func() {
 		fmt.Printf("deleted the file %s\n", pathName.FullPath())
@@ -120,24 +122,24 @@ func (s *Store) Read(key string) (io.Reader, error) {
 	return buf, err
 }
 func (s *Store) readStream(key string) (io.ReadCloser, error) {
-	pathName := s.PathTransformFunc(key)
+	pathName := s.PathTransformFunc(key, s.RootPath)
 	return os.Open(pathName.FullPath())
 }
 
-func (s *Store) writeStream(key string, r io.Reader) error {
-	pathName := s.PathTransformFunc(key)
+func (s *Store) writeStream(key string, r io.Reader) (int64, error) {
+	pathName := s.PathTransformFunc(key, s.RootPath)
 	if err := os.MkdirAll(pathName.PathName, 0755); err != nil {
-		return err
+		return 0, err
 	}
 	// log.Printf("pathName: %s\n", pathName)
 	f, err := os.Create(pathName.FullPath())
 	if err != nil {
-		return err
+		return 0, err
 	}
 	n, err := io.Copy(f, r)
 	if err != nil {
-		return nil
+		return 0, nil
 	}
 	log.Printf("written %d bytes to %s\n", n, pathName.FullPath())
-	return nil
+	return n, nil
 }
