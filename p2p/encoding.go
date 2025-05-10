@@ -20,6 +20,18 @@ func (dec GOBDecoder) Decode(r io.Reader, msg *RCP) error {
 type DefaultDecoder struct{}
 
 func (dec DefaultDecoder) Decode(r io.Reader, msg *RCP) error {
+	firstByte := make([]byte, 1)
+	_, err := r.Read(firstByte)
+	if err != nil {
+		return err
+	}
+	stream := firstByte[0] == IncomingStream
+	// in case of stream, we are not decoding what is being sent ( wwhat ??  )
+	// we are just setting the steram to true to handle the logic
+	if stream {
+		msg.Stream = true
+		return nil
+	}
 	buf := make([]byte, 1028)
 	println("inside the decoder")
 	n, err := r.Read(buf)

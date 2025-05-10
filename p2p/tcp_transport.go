@@ -137,7 +137,6 @@ func (t *TCPTransport) handleConnection(conn net.Conn, outbound bool) {
 		return
 	}
 	// Read loop
-	rcp := RCP{}
 	// buf := make([]byte, 2000)
 	for {
 		// n, err := conn.Read(buf)
@@ -146,7 +145,7 @@ func (t *TCPTransport) handleConnection(conn net.Conn, outbound bool) {
 		// 	fmt.Printf("TCP error : %s\n", err)
 		// 	continue
 		// }
-
+		rcp := RCP{}
 		// panic((err))
 		if err := t.Decoder.Decode(conn, &rcp); err != nil {
 			fmt.Print(reflect.TypeOf(err))
@@ -154,11 +153,19 @@ func (t *TCPTransport) handleConnection(conn net.Conn, outbound bool) {
 			return
 		}
 		rcp.From = conn.RemoteAddr()
-		peer.Wg.Add(1)
-		println("waiting still stream is done")
+
+		if rcp.Stream {
+			peer.Wg.Add(1)
+			fmt.Printf("[%s] incoming stream, waiting for stream to finish\n", conn.RemoteAddr())
+			peer.Wg.Wait()
+			fmt.Printf("[%s] stream closed, resuming read loop\n", conn.RemoteAddr())
+			continue
+		}
+		// peer.Wg.Add(1)
+		// fmt.Printf("waiting till stream is done\n")
 		t.rcpch <- rcp
-		peer.Wg.Wait()
-		println("stream done continueing the normal stream flow")
+		// peer.Wg.Wait()
+		// fmt.Printf("stream done continueing the normal stream flow")
 		// fmt.Printf("RCP message : %+v\n", &rcp)
 	}
 }

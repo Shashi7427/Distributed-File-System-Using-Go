@@ -1,8 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
+	"io"
+	"log"
 	"time"
 
 	"github.com/Shashi7427/Distributed-File-System-Using-Go/p2p"
@@ -56,8 +57,22 @@ func main() {
 	time.Sleep(time.Second * 2)
 	go s2.Start()
 	time.Sleep(time.Second * 2)
-	data := bytes.NewReader([]byte("some jpg bytes / big data data"))
-	s2.StoreData("niyati", data)
-
-	select {} // to block here and keep the program running
+	r, err := s2.Get("niyati_0")
+	if err != nil {
+		log.Fatal(err)
+	}
+	b, err := io.ReadAll(r)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("data from the file found -> %s\n", string(b))
+	// for i := 0; i < 10; i++ {
+	// 	fmt.Printf("looping %d\n", i)
+	// 	data := bytes.NewReader([]byte("some jpg bytes / big data data"))
+	// 	s2.StoreData(fmt.Sprintf("niyati_%d", i), data)
+	// 	time.Sleep(5 * time.Millisecond)
+	// }
+	// data := bytes.NewReader([]byte("some jpg bytes / big data data"))
+	// s2.StoreData(fmt.Sprintf("niyati_%d", 0), data)
+	// select {} // to block here and keep the program running
 }
