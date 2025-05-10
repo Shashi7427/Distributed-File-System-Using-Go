@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/gob"
 	"fmt"
 	"io"
@@ -129,15 +130,24 @@ func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error
 	if !s.store.Has(msg.Key) {
 		return fmt.Errorf("file not found in the local store : " + msg.Key)
 	}
-	r, err := s.store.Read(msg.Key)
+	fileSize, r, err := s.store.Read(msg.Key)
 	if err != nil {
 		return err
 	}
+	// asserting the reader to io.ReadCloser
+	if rc, ok := r.(io.ReadCloser); ok {
+		fmt.Println("closing the readclose")
+		defer rc.Close()
+	}
+
 	peer, ok := s.peers[from]
 	if !ok {
 		return fmt.Errorf("peer (%s) not found", from)
 	}
+	// sending incoming strea message,
 	peer.Send([]byte{p2p.IncomingStream})
+	// sending the file size
+	binary.Write(peer, binary.LittleEndian, fileSize)
 	n, err := io.Copy(peer, r)
 	if err != nil {
 		return err
@@ -217,7 +227,8 @@ type MessageGetFile struct {
 
 func (s *FileServer) Get(key string) (io.Reader, error) {
 	if s.store.Has(key) {
-		return s.store.Read(key)
+		_, f, err := s.store.Read(key)
+		return f, err
 	}
 	// if the file is not present in the local store then we need to get it from the networkd
 	println("file not found in the local store searching in the network")
@@ -233,7 +244,9 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 
 	for _, peer := range s.peers {
 		fmt.Println("received the message from the peer")
-		n, err := s.store.Write(key, io.LimitReader(peer, 30))
+		var fileSize int64
+		binary.Read(peer, binary.LittleEndian, &fileSize)
+		n, err := s.store.Write(key, io.LimitReader(peer, fileSize))
 		if err != nil {
 			return nil, err
 		}
@@ -248,7 +261,8 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 		// fmt.Printf("received %d bytes from the peer\n", n)
 		// fmt.Println(filebuffer.String())
 	}
-	return s.store.Read(key)
+	_, f, err := s.store.Read(key)
+	return f, err
 }
 
 func (s *FileServer) StoreData(key string, r io.Reader) error {

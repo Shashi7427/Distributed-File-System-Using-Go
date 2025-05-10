@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
@@ -110,20 +109,31 @@ func (s *Store) Delete(key string) error {
 }
 
 // Delete removes the file at the given key path
-
-func (s *Store) Read(key string) (io.Reader, error) {
-	f, err := s.readStream(key)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, f)
-	return buf, err
+// >>> ?? done : instead of copying the file directly to a reader
+// first copy this into a buffer and then return the file from the readstream
+func (s *Store) Read(key string) (int64, io.Reader, error) {
+	return s.readStream(key)
+	// if err != nil {
+	// 	return n, nil, err
+	// }
+	// defer f.Close()
+	// buf := new(bytes.Buffer)
+	// _, err = io.Copy(buf, f)
+	// return n, buf, err
 }
-func (s *Store) readStream(key string) (io.ReadCloser, error) {
+func (s *Store) readStream(key string) (int64, io.ReadCloser, error) {
 	pathName := s.PathTransformFunc(key, s.RootPath)
-	return os.Open(pathName.FullPath())
+
+	file, err := os.Open(pathName.FullPath())
+	if err != nil {
+		return 0, nil, err
+	}
+	fi, err := file.Stat()
+	if err != nil {
+		return 0, nil, err
+	}
+	n := fi.Size()
+	return n, file, nil
 }
 
 func (s *Store) writeStream(key string, r io.Reader) (int64, error) {

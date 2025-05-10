@@ -36,7 +36,7 @@ func TestStore(t *testing.T) {
 		t.Error(err)
 	}
 
-	r, err := s.Read(k)
+	_, r, err := s.Read(k)
 
 	if err != nil {
 		t.Error(err)
