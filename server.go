@@ -170,7 +170,7 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 	}
 	// this is not a good practice but we are doing it for now
 	fmt.Printf("received private data and stored of size : %v\n", n)
-	peer.(*p2p.TCPPeer).Wg.Done()
+	peer.CloseStream()
 	return nil
 }
 
@@ -247,13 +247,14 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 		fmt.Println("received the message from the peer")
 		var fileSize int64
 		binary.Read(peer, binary.LittleEndian, &fileSize)
-		n, err := s.store.writeDecrypt(s.EncKey, key, io.LimitReader(peer, fileSize))
-		// n, err := s.store.Write(key, io.LimitReader(peer, fileSize))
+
+		n, err := s.store.WriteDecrypt(s.EncKey, key, io.LimitReader(peer, fileSize))
 		if err != nil {
 			return nil, err
 		}
 		fmt.Printf("received %d bytes from the peer from %s \n", n, peer.RemoteAddr())
-		peer.Close()
+
+		peer.CloseStream()
 
 		// filebuffer := new(bytes.Buffer)
 		// n, err := io.CopyN(filebuffer, peer, 10)

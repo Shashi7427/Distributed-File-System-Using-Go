@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"log"
 	"time"
 
@@ -69,23 +68,24 @@ func main() {
 	// }
 	// fmt.Printf("data from the file found -> %s\n", string(b))
 
-	data := bytes.NewReader([]byte("some jpg bytes / big data data"))
-	key := "niyati"
-	s2.StoreData(key, data)
+	for i := range 4 {
+		data := bytes.NewReader([]byte("some jpg bytes / big data data"))
+		key := fmt.Sprintf("niyati_%d", i)
+		s2.StoreData(key, data)
 
-	if err := s2.store.Delete(key); err != nil {
-		log.Fatal(err)
+		if err := s2.store.Delete(key); err != nil {
+			log.Fatal(err)
+		}
+		_, err := s2.Get(key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		// _, err := io.ReadAll(r)
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
+		// fmt.Printf("data from the file found -> %s\n", string(b))
 	}
-	r, err := s2.Get(key)
-	if err != nil {
-		log.Fatal(err)
-	}
-	b, err := io.ReadAll(r)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("data from the file found -> %s\n", string(b))
-
 	// for i := 0; i < 10; i++ {
 	// 	fmt.Printf("looping %d\n", i)
 	// 	s2.StoreData(fmt.Sprintf("niyati_%d", i), data)

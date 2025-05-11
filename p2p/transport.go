@@ -6,6 +6,7 @@ import "net"
 type Peer interface {
 	net.Conn // we can use net.Conn directly
 	Send([]byte) error
+	CloseStream()
 	// RemoteAddr() net.Addr // not needed if we use net.Conn
 	// Close() error // not need if we use net.Conn
 }

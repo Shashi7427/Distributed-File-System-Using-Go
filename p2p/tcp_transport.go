@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"reflect"
 	"sync"
 )
 
@@ -17,14 +16,14 @@ type TCPPeer struct {
 	// if we accept and retrieve a conn -> outbound = false\
 	outbound bool
 
-	Wg *sync.WaitGroup
+	wg *sync.WaitGroup
 }
 
 func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	return &TCPPeer{
 		Conn:     conn,
 		outbound: outbound,
-		Wg:       &sync.WaitGroup{},
+		wg:       &sync.WaitGroup{},
 	}
 }
 
@@ -35,6 +34,10 @@ func (p *TCPPeer) Send(msg []byte) error {
 		return err
 	}
 	return nil
+}
+
+func (p *TCPPeer) CloseStream() {
+	p.wg.Done()
 }
 
 // // close implements the peer interface
@@ -148,16 +151,15 @@ func (t *TCPTransport) handleConnection(conn net.Conn, outbound bool) {
 		rcp := RCP{}
 		// panic((err))
 		if err := t.Decoder.Decode(conn, &rcp); err != nil {
-			fmt.Print(reflect.TypeOf(err))
-			fmt.Printf("TCP error : %s/n", err)
+			fmt.Printf("TCP error : %s\n", err)
 			return
 		}
 		rcp.From = conn.RemoteAddr()
 
 		if rcp.Stream {
-			peer.Wg.Add(1)
+			peer.wg.Add(1)
 			fmt.Printf("[%s] incoming stream, waiting for stream to finish\n", conn.RemoteAddr())
-			peer.Wg.Wait()
+			peer.wg.Wait()
 			fmt.Printf("[%s] stream closed, resuming read loop\n", conn.RemoteAddr())
 			continue
 		}
