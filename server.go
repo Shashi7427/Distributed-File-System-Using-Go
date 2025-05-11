@@ -292,23 +292,38 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 	time.Sleep(time.Millisecond * 5)
 	// sending th actual data now :
 	fmt.Println("sending the large data now")
-	for _, peer := range s.peers {
-		// if err := peer.Send(payload); err != nil {
-		// 	log.Println("error sending message to peer: ", err)
-		// }
-		// first letting them know that this is the incoming stream
-		peer.Send([]byte{p2p.IncomingStream})
-		n, err := copyEncrypt(s.EncKey, buf, peer)
-		if err != nil {
-			return err
-		}
 
-		// n, err := io.Copy(peer, buf)
-		// if err != nil {
-		// 	return err
-		// }
-		fmt.Println("received and written bytes to disk", n)
+	// sending the data using the multiwriter
+	peers := []io.Writer{}
+	for _, peer := range s.peers {
+		peers = append(peers, peer)
 	}
+	mw := io.MultiWriter(peers...)
+	// no need to send the payload since msg is already sent
+	mw.Write([]byte{p2p.IncomingStream})
+	n, err := copyEncrypt(s.EncKey, buf, mw)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("written %d bytes to the network\n", n)
+
+	// for _, peer := range s.peers {
+	// 	// if err := peer.Send(payload); err != nil {
+	// 	// 	log.Println("error sending message to peer: ", err)
+	// 	// }
+	// 	// first letting them know that this is the incoming stream
+	// 	peer.Send([]byte{p2p.IncomingStream})
+	// 	n, err := copyEncrypt(s.EncKey, buf, peer)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	// n, err := io.Copy(peer, buf)
+	// 	// if err != nil {
+	// 	// 	return err
+	// 	// }
+	// 	fmt.Println("received and written bytes to disk", n)
+	// }
 	return nil
 
 	// // store the file to disk
