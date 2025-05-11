@@ -247,7 +247,8 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 		fmt.Println("received the message from the peer")
 		var fileSize int64
 		binary.Read(peer, binary.LittleEndian, &fileSize)
-		n, err := s.store.Write(key, io.LimitReader(peer, fileSize))
+		n, err := s.store.writeDecrypt(s.EncKey, key, io.LimitReader(peer, fileSize))
+		// n, err := s.store.Write(key, io.LimitReader(peer, fileSize))
 		if err != nil {
 			return nil, err
 		}
@@ -281,7 +282,7 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 	msg := &Message{
 		Payload: MessageStoreFile{
 			Key:  key,
-			Size: size,
+			Size: size + 16,
 		},
 	}
 	if err := s.broadcast(msg); err != nil {
@@ -297,10 +298,15 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 		// }
 		// first letting them know that this is the incoming stream
 		peer.Send([]byte{p2p.IncomingStream})
-		n, err := io.Copy(peer, buf)
+		n, err := copyEncrypt(s.EncKey, buf, peer)
 		if err != nil {
 			return err
 		}
+
+		// n, err := io.Copy(peer, buf)
+		// if err != nil {
+		// 	return err
+		// }
 		fmt.Println("received and written bytes to disk", n)
 	}
 	return nil

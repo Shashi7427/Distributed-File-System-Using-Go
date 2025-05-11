@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -22,6 +23,7 @@ func makeServer(listenAddr string, nodes ...string) *FileServer {
 	}
 	transport := p2p.NewTCPTransport(tcpOpts)
 	FileServerOpts := FileServerOpts{
+		EncKey:            newEncryptionKey(),
 		StorageRoot:       listenAddr,
 		PathTransformFunc: CASPathTransformFunc,
 		Transport:         transport,
@@ -57,7 +59,24 @@ func main() {
 	time.Sleep(time.Second * 2)
 	go s2.Start()
 	time.Sleep(time.Second * 2)
-	r, err := s2.Get("niyati_0")
+	// r, err := s2.Get("niyati_0")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// b, err := io.ReadAll(r)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// fmt.Printf("data from the file found -> %s\n", string(b))
+
+	data := bytes.NewReader([]byte("some jpg bytes / big data data"))
+	key := "niyati"
+	s2.StoreData(key, data)
+
+	if err := s2.store.Delete(key); err != nil {
+		log.Fatal(err)
+	}
+	r, err := s2.Get(key)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -66,9 +85,9 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("data from the file found -> %s\n", string(b))
+
 	// for i := 0; i < 10; i++ {
 	// 	fmt.Printf("looping %d\n", i)
-	// 	data := bytes.NewReader([]byte("some jpg bytes / big data data"))
 	// 	s2.StoreData(fmt.Sprintf("niyati_%d", i), data)
 	// 	time.Sleep(5 * time.Millisecond)
 	// }

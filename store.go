@@ -135,7 +135,23 @@ func (s *Store) readStream(key string) (int64, io.ReadCloser, error) {
 	n := fi.Size()
 	return n, file, nil
 }
-
+func (s *Store) writeDecrypt(encKey []byte, key string, r io.Reader) (int64, error) {
+	pathName := s.PathTransformFunc(key, s.RootPath)
+	if err := os.MkdirAll(pathName.PathName, 0755); err != nil {
+		return 0, err
+	}
+	// log.Printf("pathName: %s\n", pathName)
+	f, err := os.Create(pathName.FullPath())
+	if err != nil {
+		return 0, err
+	}
+	n, err := copyDecrypt(encKey, r, f)
+	if err != nil {
+		return 0, nil
+	}
+	log.Printf("written %d bytes to %s\n", n, pathName.FullPath())
+	return int64(n), nil
+}
 func (s *Store) writeStream(key string, r io.Reader) (int64, error) {
 	pathName := s.PathTransformFunc(key, s.RootPath)
 	if err := os.MkdirAll(pathName.PathName, 0755); err != nil {
